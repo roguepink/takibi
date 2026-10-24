@@ -18,7 +18,7 @@ const params = new URLSearchParams(location.search);
 
 // ---------- 覚えておく ----------
 const st = Object.assign(
-  { scene: 0, size: 0, bright: 3, warm: 0, soundOn: true, fireVol: 70, ambVol: 50, vol: 40, order: 'random', musicOn: false, track: 0, hints: 0 },
+  { scene: 0, size: 0, bright: 3, warm: 0, soundOn: true, fireVol: 80, ambVol: 65, vol: 40, order: 'random', musicOn: false, track: 0, hints: 0 },
   load()
 );
 function load() { try { return JSON.parse(localStorage.getItem(KEY)) || {}; } catch (e) { return {}; } }

@@ -1,5 +1,6 @@
 {
   "version": 1,
+  "v": 2,
   "fire": [
     {
       "file": "sound/fire-1.m4a",
@@ -25,7 +26,7 @@
   "yama": [
     {
       "file": "sound/yama-1.m4a",
-      "gain": 0.55,
+      "gain": 0.65,
       "loopStart": 0.5,
       "loopEnd": 156.5,
       "label": "夜の山(虫とカエル・かすかな沢・遠いフクロウ)",
@@ -36,7 +37,7 @@
   "umi": [
     {
       "file": "sound/umi-1.m4a",
-      "gain": 0.55,
+      "gain": 0.82,
       "loopStart": 0.5,
       "loopEnd": 130.5,
       "label": "砂浜に寄せる小さな波(遠め)",
@@ -47,51 +48,51 @@
   "pops": [
     {
       "file": "sound/pop-01.m4a",
-      "gain": 0.5
+      "gain": 0.9
     },
     {
       "file": "sound/pop-02.m4a",
-      "gain": 0.5
+      "gain": 0.9
     },
     {
       "file": "sound/pop-03.m4a",
-      "gain": 0.5
+      "gain": 0.9
     },
     {
       "file": "sound/pop-04.m4a",
-      "gain": 0.5
+      "gain": 0.9
     },
     {
       "file": "sound/pop-05.m4a",
-      "gain": 0.5
+      "gain": 0.9
     },
     {
       "file": "sound/pop-06.m4a",
-      "gain": 0.5
+      "gain": 0.9
     },
     {
       "file": "sound/pop-07.m4a",
-      "gain": 0.5
+      "gain": 0.9
     },
     {
       "file": "sound/pop-08.m4a",
-      "gain": 0.5
+      "gain": 0.9
     },
     {
       "file": "sound/pop-09.m4a",
-      "gain": 0.5
+      "gain": 0.9
     },
     {
       "file": "sound/pop-10.m4a",
-      "gain": 0.5
+      "gain": 0.9
     },
     {
       "file": "sound/pop-11.m4a",
-      "gain": 0.5
+      "gain": 0.9
     },
     {
       "file": "sound/pop-12.m4a",
-      "gain": 0.5
+      "gain": 0.9
     }
   ]
 }

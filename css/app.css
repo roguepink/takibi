@@ -98,6 +98,8 @@ body.nocursor { cursor: none; }
 .link { min-height: 48px; padding: 0 4px; font-size: 14px; opacity: 0.72; border-bottom: 1px solid var(--line); }
 .note { font-size: 14px; line-height: 1.75; opacity: 0.75; word-break: auto-phrase; text-wrap: pretty; margin: 8px 0 10px; letter-spacing: 0.04em; }
 .note:empty { display: none; }
+.sndcredit { font-size: 10.5px; line-height: 1.7; color: var(--beni); opacity: 0.75; margin: 14px 0 0; letter-spacing: 0.02em; overflow-wrap: anywhere; }
+.sndcredit a { color: inherit; text-decoration: underline; text-decoration-color: rgba(179,106,90,0.4); text-underline-offset: 2px; }
 .credit { font-size: 11px; color: var(--beni); opacity: 0.7; text-align: right; margin: 10px 0 0; letter-spacing: 0.2em; }
 
 input[type=range] { flex: 1; height: 48px; margin: 0; background: none; -webkit-appearance: none; appearance: none; touch-action: pan-y; }

@@ -19,9 +19,12 @@ SR = 48000
 
 
 def load(path, ch=2):
-    raw = subprocess.run(["ffmpeg", "-nostdin", "-v", "error", "-i", path, "-ac", str(ch), "-ar", str(SR),
+    # 1ch のファイル(fire-1)は 左右に同じ大きさで(ブラウザと同じ。ffmpeg の -ac 2 は 3dB 下げるので使わない)
+    mono = " mono," in subprocess.run(["ffmpeg", "-nostdin", "-i", path], capture_output=True, text=True).stderr
+    raw = subprocess.run(["ffmpeg", "-nostdin", "-v", "error", "-i", path, "-ac", "1" if mono else str(ch), "-ar", str(SR),
                           "-f", "f32le", "-"], capture_output=True, check=True).stdout
-    return np.frombuffer(raw, np.float32).astype(np.float64).reshape(-1, ch)
+    y = np.frombuffer(raw, np.float32).astype(np.float64)
+    return np.repeat(y.reshape(-1, 1), ch, axis=1) if mono else y.reshape(-1, ch)
 
 
 def lufs_file(path):

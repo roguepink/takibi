@@ -40,8 +40,10 @@ def save_wav(path, x):
                     "-i", "-", "-c:a", "pcm_f32le", path], input=x.tobytes(), check=True)
 
 
-def encode_m4a(wav, m4a):
-    subprocess.run(["ffmpeg", "-nostdin", "-v", "error", "-y", "-i", wav, "-c:a", "aac_at", "-b:a", BITRATE,
+def encode_m4a(wav, m4a, mono=False):
+    # mono: 左右が まったく同じ音は 1ch で書く(ブラウザで開いたときのメモリが半分になる。古い iPhone のため)
+    ch = ["-ac", "1", "-b:a", "80k"] if mono else ["-b:a", BITRATE]
+    subprocess.run(["ffmpeg", "-nostdin", "-v", "error", "-y", "-i", wav, "-c:a", "aac_at", *ch,
                     "-movflags", "+faststart", m4a], check=True)
 
 
@@ -171,7 +173,7 @@ def to_lufs(x, target, ceiling_db=-2.0, iters=4):
     return y, i, tp
 
 
-def finish_loop(name, ring):
+def finish_loop(name, ring, mono=False):
     """輪(ring)を仕上げて m4a にする。前後に PAD 秒の続きを足す。"""
     i, tp = lufs(ring)   # 音量は ring_limit_target でそろえ済み。ここでは測るだけ(継ぎ目を変えない)
     p = sec(PAD)
@@ -179,7 +181,7 @@ def finish_loop(name, ring):
     wav = os.path.join(WORK, name + ".wav")
     save_wav(wav, full)
     m4a = os.path.join(OUT, name + ".m4a")
-    encode_m4a(wav, m4a)
+    encode_m4a(wav, m4a, mono)
     L = len(ring) / SR
     print(f"  {name}: {L:.2f}s  {i:.1f} LUFS  TP {tp:.1f}  -> {os.path.getsize(m4a)/1e6:.2f} MB")
     return {"file": f"sound/{name}.m4a", "loopStart": PAD, "loopEnd": round(PAD + L, 4),
@@ -231,7 +233,7 @@ def make_fire_yama():
     L = len(x) - sec(3.0)
     ring = slow_level(ring_limit_target(ring_tile(x, L, 3.0), -22.0, ceiling=-4.5), strength=0.7)
     ring = ring_limit_target(ring, -21.0, ceiling=-4.5)   # AAC にするとピークが 3dB ほど上がるので低めに
-    return finish_loop("fire-1", ring)
+    return finish_loop("fire-1", ring, mono=True)   # もとがモノラル(左右同じ)
 
 
 def make_fire_umi():
@@ -340,7 +342,7 @@ def make_pops():
         # AAC の頭の遅れぶん、前に 20ms の無音
         save_wav(wav, np.concatenate([np.zeros((sec(0.02), 2)), seg]))
         encode_m4a(wav, os.path.join(OUT, name + ".m4a"))
-        out.append({"file": f"sound/{name}.m4a", "gain": 0.5, "src": round(i * hop / SR, 2)})
+        out.append({"file": f"sound/{name}.m4a", "gain": 0.9, "src": round(i * hop / SR, 2)})
     print(f"  pops: {len(out)} 個 (候補 {len(cands)})", [p['src'] for p in out])
     for p in out:
         p.pop("src")
@@ -358,11 +360,11 @@ def main():
     pops = make_pops()
     f1.update({"gain": 0.8, "scene": "yama", "label": "外の焚き火(乾いた枝・パチパチ多め)"})
     f2.update({"gain": 0.8, "scene": "umi", "label": "暖炉の火(落ち着いたパチパチ)"})
-    u.update({"gain": 0.55, "label": "砂浜に寄せる小さな波(遠め)"})
-    y.update({"gain": 0.55, "label": "夜の山(虫とカエル・かすかな沢・遠いフクロウ)"})
+    u.update({"gain": 0.82, "label": "砂浜に寄せる小さな波(遠め)"})
+    y.update({"gain": 0.65, "label": "夜の山(虫とカエル・かすかな沢・遠いフクロウ)"})
     order = ["file", "gain", "loopStart", "loopEnd", "scene", "label", "duration", "lufs"]
     tidy = lambda d: {k: d[k] for k in order if k in d}
-    data = {"version": 1, "fire": [tidy(f1), tidy(f2)], "yama": [tidy(y)], "umi": [tidy(u)], "pops": pops}
+    data = {"version": 1, "v": 2, "fire": [tidy(f1), tidy(f2)], "yama": [tidy(y)], "umi": [tidy(u)], "pops": pops}
     with open(os.path.join(OUT, "sounds.json"), "w", encoding="utf-8") as f:
         json.dump(data, f, ensure_ascii=False, indent=2)
         f.write("\n")
