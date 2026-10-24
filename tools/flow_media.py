@@ -21,7 +21,7 @@ from PIL import Image
 ROOT = Path(__file__).resolve().parent.parent
 RAW = ROOT / "_check/flow/raw"
 W, H = 720, 1280
-MEDIA_V = 2          # 動画・静止画を作り直したら 1つ上げる(スマホに覚えた古い絵を使わせないため)
+MEDIA_V = 3          # 動画・静止画を作り直したら 1つ上げる(スマホに覚えた古い絵を使わせないため)
 SCENES = [("yama", "山"), ("umi", "海")]
 BAD = {"yama-03", "umi-03", "yama-08"}   # 2026-10-25 目で見て外した: 03 = 薪が空中から飛んできて消える、yama-08 = 一瞬 画面全体が明るくなる
 
