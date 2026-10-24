@@ -24,12 +24,18 @@ async function sceneImages() {
   return out;
 }
 
-self.addEventListener('install', (e) => {
-  e.waitUntil(caches.open(VERSION).then((c) => c.addAll(FILES))
-    .then(() => sceneImages().then((list) => caches.open(KEEP).then((c) => Promise.all(list.map((u) =>
-      c.match(u).then((hit) => hit || fetch(u).then((r) => { if (r.ok) return c.put(u, r); }))))))).catch(() => {}))
-    .then(() => self.skipWaiting()));
-});
+async function install() {
+  await (await caches.open(VERSION)).addAll(FILES);
+  try {   // 静止画・熾火の絵(失敗しても 入れるのは止めない)
+    const keep = await caches.open(KEEP);
+    for (const u of await sceneImages()) {
+      if (await keep.match(u)) continue;
+      const r = await fetch(u);
+      if (r.ok) await keep.put(u, r);
+    }
+  } catch (e) {}
+}
+self.addEventListener('install', (e) => { e.waitUntil(install().then(() => self.skipWaiting())); });
 self.addEventListener('activate', (e) => {
   e.waitUntil(caches.keys().then((keys) => Promise.all(keys.filter((k) => k !== VERSION && k !== KEEP).map((k) => caches.delete(k))))
     .then(() => self.clients.claim()));
