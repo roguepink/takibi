@@ -21,9 +21,9 @@ from PIL import Image
 ROOT = Path(__file__).resolve().parent.parent
 RAW = ROOT / "_check/flow/raw"
 W, H = 720, 1280
-MEDIA_V = 1          # 動画・静止画を作り直したら 1つ上げる(スマホに覚えた古い絵を使わせないため)
+MEDIA_V = 2          # 動画・静止画を作り直したら 1つ上げる(スマホに覚えた古い絵を使わせないため)
 SCENES = [("yama", "山"), ("umi", "海")]
-BAD = set()          # 使わない動画(例: "yama-04")
+BAD = {"yama-03", "umi-03", "yama-08"}   # 2026-10-25 目で見て外した: 03 = 薪が空中から飛んできて消える、yama-08 = 一瞬 画面全体が明るくなる
 
 
 def frames(src, fps=8, size=(180, 320)):
@@ -77,7 +77,12 @@ def main():
             im = Image.open(d / "still.jpg").convert("RGB")
             ch = int(H * 0.62); cw = int(ch * 3 / 4)
             im.crop(((W - cw) // 2, int(H * 0.30), (W + cw) // 2, int(H * 0.30) + ch)).resize((300, 400), Image.LANCZOS).save(ROOT / f"icons/scene-{sid}.jpg", quality=84)
-        out.append(dict(id=sid, name=name, clips=names, still=f"media/{sid}/still.jpg", end=f"media/{sid}/end.mp4" if end.exists() else None))
+        fire = None
+        if names:
+            L = np.asarray(Image.open(d / "still.jpg").convert("L"), dtype=np.float32)
+            ys, xs = np.where(L >= max(200, np.percentile(L, 99.5)))
+            fire = [round(float(np.median(xs)) / W, 3), round(float(np.median(ys)) / H, 3)]   # 火の位置(「大きさ」の中心)
+        out.append(dict(id=sid, name=name, clips=names, still=f"media/{sid}/still.jpg", end=f"media/{sid}/end.mp4" if end.exists() else None, fire=fire))
     if only_check:
         return
     js = ["// 焚き火の場面。tools/flow_media.py が作る(手で直さない)。2026-10-25 Google Flow(Veo 3.1 Lite)",
