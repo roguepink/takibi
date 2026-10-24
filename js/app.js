@@ -134,7 +134,7 @@ function startSound() { sound.start(SCENES[st.scene].id); refreshLabels(); }
 // 自分で消す: 炎が 熾火へ ゆっくり → 暗く → 「ふれると、火がともります」
 function putOut() {
   phase = 'out';
-  hideUI(true); clearSleep(); hideLoading();
+  hideUI(true); clearSleep(); hideLoading(); hideHint();
   fire.fadeOut = 2.5; fire.fadeTarget = IDLE;
   fire.setEmber(true, 3);
   sound.stop(3); music.stop(3);         // 止めおわったら 音の仕組みも休ませる(sound.js)
@@ -150,7 +150,7 @@ function putOut() {
 // おやすみの終わり: 終わりの動画(火が小さくなって熾火)→ だんだん暗く → 真っ黒。音も小さく消える。描くのも止める
 function sleepOut() {
   phase = 'slept';
-  hideUI(true); clearSleep(); hideLoading();
+  hideUI(true); clearSleep(); hideLoading(); hideHint();
   sound.fadeTo(0.3, 12);
   fire.playEnd(
     () => { sound.fadeTo(0.12, 10); },                        // 終わりの動画が はじまった
