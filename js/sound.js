@@ -5,7 +5,10 @@
 // 決めたことと理由は docs/sound.md。
 // - 焚き火の音(fire + pops)と まわりの音(yama/umi)は、大きさを別々に変えられる。
 // - iPhone は 画面にふれた操作の中でないと鳴らせない → start() は ふれたときに呼ぶ。
-// - 場面を変えたら、焚き火の音も まわりの音も ゆっくり重ねて入れかえ、使わなくなった音はメモリから はなす(古い iPhone のため)。
+// - 場面を変えたら、焚き火の音も まわりの音も ゆっくり重ねて入れかえ、使わなくなった音は 30秒たってからメモリから はなす
+//   (古い iPhone のため。すぐ はなすと、場所を何度も変えたとき 開きなおしてメモリが はね上がる)。
+// - 遅い回線では 動画を先に: gate(約束)があれば、それがすむまで 音のファイルを読まない(app.js が 1本目の動画を読み終わるまで)。
+// - 止めたら(火を消す・おやすみの終わり・音を止める)、消えおわってから 音の仕組みごと休ませる(電池)。
 // - おやすみで小さくしていくと、火が熾火になるように パチッが減り、音も やわらかく(高い音が少なく)なる。
 // - アプリを閉じたら すぐ止め、もどったら 1.5秒かけて ふわっと もどす(急に大きな音が出ないように)。
 // - sounds.json が無い・読めないときは、何もしない(音なしで動く)。
@@ -34,6 +37,8 @@ export class Sound {
     this.fireLayer = null; this.fireFile = null;
     this.ambLayer = null; this.ambId = null;
     this.popT = 0; this.lastPop = -1; this.rev = '';
+    this.gate = null;             // これがすむまで 音のファイルを読まない(遅い回線で 動画を先に)
+    this.relT = 0; this.restT = 0;
   }
 
   async load() {
@@ -72,7 +77,8 @@ export class Sound {
 
   buf(file) {
     if (!this.bufs.has(file)) {
-      const p = fetch(file + (this.rev || '')).then((r) => { if (!r.ok) throw new Error(r.status); return r.arrayBuffer(); })
+      const p = (this.gate || Promise.resolve()).then(() => fetch(file + (this.rev || '')))
+        .then((r) => { if (!r.ok) throw new Error(r.status); return r.arrayBuffer(); })
         .then((ab) => new Promise((res, rej) => {
           // 古い Safari は Promise の形がないので 呼び返しの形で。新しいものは Promise も返すので、その失敗も拾っておく
           const r = this.ctx.decodeAudioData(ab, res, rej);
@@ -83,8 +89,11 @@ export class Sound {
     }
     return this.bufs.get(file);
   }
-  // 使っていない 長い音を メモリから はなす(fire・まわりの音は 1つ 30〜70MB ある)
+  // 使っていない 長い音を メモリから はなす(fire・まわりの音は 1つ 30〜70MB ある)。
+  // その場面から 30秒はなれてから(すぐ もどってきたとき 開きなおさないように)
+  releaseLater() { clearTimeout(this.relT); this.relT = setTimeout(() => this.release(), 30000); }
   release() {
+    if (!this.def) return;
     const keep = new Set([this.fireFile, this.ambFile].filter(Boolean));
     for (const p of this.def.pops) keep.add(p.file);
     for (const f of [...this.bufs.keys()]) if (!keep.has(f)) this.bufs.delete(f);
@@ -129,13 +138,14 @@ export class Sound {
     layer.then((L) => {
       if (!L || !this.ctx) return;
       this.glide(L.g.gain, 0, fade);
-      setTimeout(() => { try { L.src.stop(); L.src.disconnect(); L.g.disconnect(); } catch (e) {} this.release(); }, fade * 1250 + 200);
+      setTimeout(() => { try { L.src.stop(); L.src.disconnect(); L.g.disconnect(); } catch (e) {} this.releaseLater(); }, fade * 1250 + 200);
     });
   }
 
   // 鳴らしはじめる(ふれた操作の中で)
   start(sceneId, fade = 4) {
     if (!this.ensure()) return;
+    clearTimeout(this.restT);
     this.on = true;
     this.level = 1;
     this.ramp(this.tone.frequency, OPEN, 0.1);
@@ -216,6 +226,9 @@ export class Sound {
     const f = this.fireLayer, a = this.ambLayer;
     this.fireLayer = this.ambLayer = null; this.ambId = null; this.fireFile = this.ambFile = null;
     this.drop(f, fade); this.drop(a, fade);
+    // 消えおわったら 音の仕組みごと休ませる(また start() すれば 起きる)
+    clearTimeout(this.restT);
+    this.restT = setTimeout(() => { if (!this.on && this.ctx && this.ctx.state === 'running') { try { this.ctx.suspend(); } catch (e) {} } }, fade * 1250 + 400);
   }
 
   // アプリを閉じたとき: すぐ止める(大きさを 0 にしてから)/ もどったら: 1.5秒で ふわっと もどす

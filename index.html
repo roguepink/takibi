@@ -15,7 +15,9 @@
 <link rel="apple-touch-icon" href="icons/apple-touch-icon.png">
 <meta property="og:title" content="ひとくべ">
 <meta property="og:description" content="山と海の焚き火を、ただ眺める。">
-<meta property="og:image" content="https://roguepink.github.io/takibi/icons/ogp.jpg">
+<meta property="og:image" content="https://roguepink.github.io/takibi/icons/ogp.jpg?v=2">
+<meta property="og:image:width" content="1200">
+<meta property="og:image:height" content="630">
 <meta property="og:url" content="https://roguepink.github.io/takibi/">
 <meta property="og:type" content="website">
 <meta name="twitter:card" content="summary_large_image">
@@ -34,6 +36,7 @@
 <!-- はじめの名前(たて書き) -->
 <div id="title" class="title" aria-hidden="true">ひとくべ</div>
 <p id="hint" class="hint" role="status"></p>
+<p id="loading" class="hint faint" aria-live="polite">よみこんでいます</p>
 <button id="relight" class="relight" hidden>もう一度、火をつける</button>
 <p id="toast" class="toast" aria-live="polite"></p>
 
@@ -50,12 +53,25 @@
       <div class="row"><button id="splay" class="big">音を止める</button></div>
       <div class="row"><span class="lab">焚き火の音</span><input id="fireVol" type="range" min="0" max="100" step="1" aria-label="焚き火の音の大きさ"></div>
       <div class="row"><span class="lab" id="ambLab">まわりの音</span><input id="ambVol" type="range" min="0" max="100" step="1" aria-label="まわりの音の大きさ"></div>
-      <!-- 音の出どころ(CC BY の2つは 名前・題・許可・変えたことを出す決まり。くわしくは sound/CREDITS.md) -->
-      <p class="sndcredit">音はすべて本物の録音です。<br>
-        焚き火・波・沢の音: Joseph SARDIN – <a href="https://bigsoundbank.com/" target="_blank" rel="noopener">BigSoundBank.com</a>(CC0)<br>
-        夜の虫とカエル: “<a href="https://commons.wikimedia.org/wiki/File:Nature_sounds_ambience_in_a_Dordogne_pond.ogg" target="_blank" rel="noopener">Nature sounds ambience in a Dordogne pond</a>” by Glaneur de sons(<a href="https://creativecommons.org/licenses/by/3.0/" target="_blank" rel="noopener">CC BY 3.0</a>)<br>
-        遠いフクロウ: “<a href="https://commons.wikimedia.org/wiki/File:Tawny_owl_calling_at_night_in_Tuntorp,_Brastad,_Sweden.ogg" target="_blank" rel="noopener">Tawny owl calling at night in Tuntorp</a>” by W.carter(<a href="https://creativecommons.org/licenses/by/4.0/" target="_blank" rel="noopener">CC BY 4.0</a>)<br>
-        虫とフクロウは、長さ・音の高さの幅・遠さを 編集して使っています。</p>
+      <!-- 音の出どころ。「音について」を押したときだけ開く。
+           CC BY の2つは 題・作者・許可へのリンク・編集したことを 必ず出す決まり(くわしくは sound/CREDITS.md) -->
+      <details class="sndcredit">
+        <summary>音について</summary>
+        <p>音はすべて本物の録音です。</p>
+        <dl>
+          <dt>焚き火・波・沢の音</dt>
+          <dd>Joseph SARDIN(CC0)<a href="https://bigsoundbank.com/" target="_blank" rel="noopener">BigSoundBank.com</a></dd>
+          <dt>夜の虫とカエル</dt>
+          <dd>“Nature sounds ambience in a Dordogne pond” by Glaneur de sons
+            <a href="https://commons.wikimedia.org/wiki/File:Nature_sounds_ambience_in_a_Dordogne_pond.ogg" target="_blank" rel="noopener">録音のページ</a>
+            <a href="https://creativecommons.org/licenses/by/3.0/" target="_blank" rel="noopener">CC BY 3.0(使ってよい条件)</a></dd>
+          <dt>遠いフクロウ</dt>
+          <dd>“Tawny owl calling at night in Tuntorp” by W.carter
+            <a href="https://commons.wikimedia.org/wiki/File:Tawny_owl_calling_at_night_in_Tuntorp,_Brastad,_Sweden.ogg" target="_blank" rel="noopener">録音のページ</a>
+            <a href="https://creativecommons.org/licenses/by/4.0/" target="_blank" rel="noopener">CC BY 4.0(使ってよい条件)</a></dd>
+        </dl>
+        <p>虫とフクロウは、長さ・音の高さの幅・遠さを 編集して使っています。</p>
+      </details>
     </section>
 
     <!-- 曲(music/tracks.json に曲があるときだけ) -->
@@ -68,21 +84,21 @@
 
     <!-- おやすみ(タイマー) -->
     <section id="sleep" class="sheet" hidden aria-label="おやすみ">
-      <p class="note">時間がくると、火がゆっくり小さくなって、熾火(おきび)になります。</p>
-      <div class="choices wrap" id="sleepChoices"></div>
+      <p class="note">時間がくると、火がゆっくり<br>小さくなって、熾火(おきび)になります。</p>
+      <div class="choices grid" id="sleepChoices"></div>
     </section>
 
     <!-- ととのえる -->
     <section id="adjust" class="sheet" hidden aria-label="ととのえる">
       <div class="row"><span class="lab">大きさ</span><div class="choices" id="sizeChoices"></div></div>
-      <div class="row"><span class="lab">明るさ</span><div class="choices dots" id="brightChoices"></div></div>
+      <div class="row"><span class="lab">明るさ</span><div class="scale"><span class="end">暗く</span><div class="choices dots" id="brightChoices"></div><span class="end">明るく</span></div></div>
       <div class="row"><span class="lab">色あい</span><div class="choices" id="warmChoices"></div></div>
       <div class="row end">
         <button id="out" class="link">火を消す</button>
         <button id="fs" class="link" hidden>画面いっぱいにする</button>
       </div>
-      <p id="lineNote" class="note" hidden>LINEの中ではなく、ブラウザで開くと、画面が消えずにずっと表示できます。</p>
-      <p id="wakeNote" class="note" hidden>しばらくすると画面が消えるときは、スマホの「自動ロック」を長めにしてください。</p>
+      <p id="lineNote" class="note" hidden>右上の「…」から『ブラウザで開く』を押すと、<br>画面が消えずに ずっと見られます。</p>
+      <p id="wakeNote" class="note" hidden>しばらくすると画面が消えるときは、<br>スマホの「自動ロック」を長めにしてください。</p>
       <p id="installNote" class="note"></p>
       <p class="credit">ひとくべ ・ ROGUE PINK</p>
     </section>

@@ -12,6 +12,7 @@ const SLEEPS = [
   { min: 30, name: '30分' }, { min: 45, name: '45分' }, { min: 60, name: '60分' }, { min: 90, name: '90分' },
 ];
 const TOUCH_TO_LIGHT = 'ふれると、火がともります';
+const IDLE = 0.74;   // 火をつける前・消したあとの 黒い幕の濃さ(熾火の絵が うっすら見える)
 const AMB_NAME = { yama: '森の音', umi: '波の音' };
 const placeName = (s) => `${s.name}の焚き火`;
 const params = new URLSearchParams(location.search);
@@ -30,7 +31,8 @@ if (!(st.scene < SCENES.length)) st.scene = 0;
 const fire = new Fire($('scene'));
 fire.set({ size: st.size, bright: st.bright, warm: st.warm });
 fire.setScene(st.scene, false);
-fire.fade = 1; fire.fadeIn = 3.0; fire.fadeTarget = 0.82;   // はじめは 火をつける前の 暗い場面が うっすら見える
+fire.setEmber(true, 0);
+fire.fade = 1; fire.fadeIn = 3.0; fire.fadeTarget = IDLE;   // はじめは 火をつける前の 熾火が 暗く うっすら見える
 fire.start();
 
 const sound = new Sound();
@@ -45,7 +47,13 @@ let phase = 'dark';
 setTimeout(() => $('title').classList.add('on'), 200);
 setTimeout(() => { if (phase === 'dark') showHint(TOUCH_TO_LIGHT); }, 900);
 
-function showHint(text) { const h = $('hint'); h.textContent = text; h.classList.add('on'); }
+// 案内(下の暗い所)。lines を渡すと その位置で改行する
+function showHint(text, lines) {
+  const h = $('hint');
+  if (lines) { h.textContent = ''; lines.forEach((l, i) => { if (i) h.appendChild(document.createElement('br')); h.appendChild(document.createTextNode(l)); }); }
+  else h.textContent = text;
+  h.classList.add('on');
+}
 function hideHint() { $('hint').classList.remove('on'); }
 let toastT = 0;
 function toast(text, ms = 2000) {
@@ -53,27 +61,69 @@ function toast(text, ms = 2000) {
   clearTimeout(toastT); toastT = setTimeout(() => t.classList.remove('on'), ms);
 }
 
-let outT = 0, relightT = 0;
+// 読みこみ中: 3秒たっても動画が流れなければ「よみこんでいます」を うすく出す
+let loadWatch = 0, stillSince = 0;
+function watchLoading() {
+  clearInterval(loadWatch); stillSince = performance.now();
+  loadWatch = setInterval(() => {
+    const l = $('loading');
+    if (phase !== 'lit' || document.hidden) { l.classList.remove('on'); if (phase !== 'lit') clearInterval(loadWatch); return; }
+    if (fire.moving) { stillSince = performance.now(); l.classList.remove('on'); return; }
+    if (performance.now() - stillSince > 3000 && !uiOn) { hideHint(); l.classList.add('on'); }
+  }, 500);
+}
+function hideLoading() { clearInterval(loadWatch); $('loading').classList.remove('on'); }
+
+// 1本目の動画を読み終わるまで 音は読まない(遅い回線で 動画を先に。最長30秒まつ)
+function firstClipLoaded() {
+  return new Promise((res) => {
+    const t0 = Date.now();
+    const tick = () => {
+      const v = fire.v[fire.cur];
+      let done = fire.allBad || fire.played > 0 || Date.now() - t0 > 30000;
+      try {
+        if (!done && v.readyState >= 3) {
+          const end = v.buffered.length ? v.buffered.end(v.buffered.length - 1) : 0;
+          if ((isFinite(v.duration) && end >= v.duration - 0.3) || v.networkState === 1) done = true;   // 全部読んだ・読みこみが ひと休みした
+        }
+      } catch (e) {}
+      if (done) res(); else setTimeout(tick, 400);
+    };
+    tick();
+  });
+}
+let soundGated = false;
+
+let outT = 0, relightT = 0, darkDone = false, lineShown = false;
 // 火をつける(ふれた操作の中で呼ぶ → 動画・音・画面つけっぱなしを ここで始められる)
 function lightUp() {
   const again = phase === 'slept' || phase === 'out';
-  phase = 'lit';
+  phase = 'lit'; darkDone = false;
   clearTimeout(outT); clearTimeout(relightT);
   $('title').classList.remove('on');
   hideHint();
   $('relight').hidden = true;
   fire.dim = 1;
-  if (again) fire.setScene(st.scene, false);
+  if (again) { fire.setScene(st.scene, false); if (fire.fade >= 0.99) fire.setEmber(true, 0); }
   fire.play();
+  fire.setEmber(false, 2.6);            // 熾火から 炎へ ふわっと
   fire.fadeIn = 2.5; fire.fadeTarget = 0;
   if (!fire.running) fire.start();
   wake(true);
+  if (!soundGated) { soundGated = true; sound.gate = firstClipLoaded(); }
   if (st.soundOn) startSound();
   if (st.musicOn && music.tracks.length) music.play();
+  watchLoading();
   if (st.hints < 3) {
     st.hints++; save();
-    setTimeout(() => { if (phase === 'lit' && !uiOn) showHint('画面にふれると、場所や音をえらべます'); }, 6000);
+    setTimeout(() => { if (phase === 'lit' && !uiOn && fire.moving) showHint('画面にふれると、場所や音をえらべます'); }, 6000);
     setTimeout(() => { if (!uiOn) hideHint(); }, 11000);
+  }
+  // LINE の中: 1回だけ「ブラウザで開く」を うすく案内(LINE の中では 画面が消えやすく、ホーム画面にも入れられない)
+  if (inLine && !lineShown) {
+    lineShown = true;
+    setTimeout(() => { if (phase === 'lit' && !uiOn) { hideLoading(); showHint('', ['右上の「…」から', '『ブラウザで開く』を押すと、', '画面が消えずに ずっと見られます']); } }, 12500);
+    setTimeout(() => { if (!uiOn) hideHint(); }, 22500);
   }
   const t = +params.get('sleep');   // 隠し設定: ?sleep=20 → 20秒で おやすみ(確かめ用)
   if (t > 0 && !sleepEnd) sleepSecs(t);
@@ -81,12 +131,13 @@ function lightUp() {
 
 function startSound() { sound.start(SCENES[st.scene].id); refreshLabels(); }
 
-// 自分で消す: ゆっくり暗く → 「ふれると、火がともります」
+// 自分で消す: 炎が 熾火へ ゆっくり → 暗く → 「ふれると、火がともります」
 function putOut() {
   phase = 'out';
-  hideUI(true); clearSleep();
-  fire.fadeOut = 2.5; fire.fadeTarget = 0.82;
-  sound.stop(3); music.stop(3);
+  hideUI(true); clearSleep(); hideLoading();
+  fire.fadeOut = 2.5; fire.fadeTarget = IDLE;
+  fire.setEmber(true, 3);
+  sound.stop(3); music.stop(3);         // 止めおわったら 音の仕組みも休ませる(sound.js)
   outT = setTimeout(() => {
     if (phase !== 'out') return;
     fire.chain = false; fire.pauseAll();
@@ -99,7 +150,7 @@ function putOut() {
 // おやすみの終わり: 終わりの動画(火が小さくなって熾火)→ だんだん暗く → 真っ黒。音も小さく消える。描くのも止める
 function sleepOut() {
   phase = 'slept';
-  hideUI(true); clearSleep();
+  hideUI(true); clearSleep(); hideLoading();
   sound.fadeTo(0.3, 12);
   fire.playEnd(
     () => { sound.fadeTo(0.12, 10); },                        // 終わりの動画が はじまった
@@ -108,13 +159,26 @@ function sleepOut() {
       fire.fadeOut = 15; fire.fadeTarget = 1;
       sound.fadeTo(0, 14);
       if (music.playing) music.fadeOut(10);
-      outT = setTimeout(() => {
-        if (phase !== 'slept') return;
-        sound.stop(0.5); fire.stop(); wake(false);
-      }, 15500);
+      outT = setTimeout(() => { if (phase === 'slept') finishDark(); }, 15500);
     });
 }
-
+// 真っ黒にして すべて止める(音の仕組みも休ませる・画面つけっぱなしをやめる・描くのも止める)
+function finishDark() {
+  darkDone = true;
+  fire.cancelEnd(); fire.chain = false; fire.pauseAll();
+  fire.fade = fire.fadeTarget = 1; fire.draw();
+  sound.stop(0.1);
+  if (music.playing) music.stop(0.1);
+  resumeMusic = false;
+  fire.stop(); wake(false);
+}
+// 画面を消している間・ほかのアプリの間に 時間がすぎていた → もどったとき 音を出さずに すぐ真っ黒
+function goDark() {
+  phase = 'slept';
+  clearTimeout(outT);
+  hideUI(true); clearSleep(); hideLoading(); hideHint();
+  finishDark();
+}
 // ---------- 操作の部品を出す・かくす ----------
 const ui = $('ui');
 let uiOn = false, uiAt = 0, hideT = 0, fadeT = 0, sheet = null;
@@ -127,7 +191,7 @@ function showUI() {
   ui.classList.remove('fading');
   ui.classList.add('on'); ui.setAttribute('aria-hidden', 'false');
   document.body.classList.remove('nocursor');
-  hideHint();
+  hideHint(); $('loading').classList.remove('on');
   refreshLabels();
   bump();
 }
@@ -151,6 +215,7 @@ function bump() {
 function openSheet(id) {
   sheet = sheet === id ? null : id;   // 同じボタンを もう一度押すと閉じる
   for (const s of ['place', 'sound', 'music', 'sleep', 'adjust']) $(s).hidden = s !== sheet;
+  $('drawer').classList.toggle('top', sheet === 'adjust');   // 「ととのえる」は 火をかくさないように 上に出す
   document.querySelectorAll('#bar [data-open]').forEach((b) => b.classList.toggle('cur', b.dataset.open === sheet));
   if (uiOn) bump();
 }
@@ -222,18 +287,23 @@ SCENES.forEach((s, i) => {
   b.addEventListener('click', () => { changeScene(i); openSheet(null); hideUI(); });
   places.appendChild(b);
 });
-let switching = 0;
-// 黒をはさんで ゆっくり入れかえる。まわりの音も ゆっくり入れかえる
+let switching = 0, switchBusy = false;
+// 黒をはさんで ゆっくり入れかえる。まわりの音も ゆっくり入れかえる。
+// 切りかえ中(黒くなって もどりはじめるまで 約2.6秒)に また押されても 無視する(音を何度も開きなおさないように)
 function changeScene(i) {
-  if (i === st.scene) return;
+  if (i === st.scene || switchBusy) return;
+  switchBusy = true;
   st.scene = i; save(); refreshChoices(); refreshLabels();
   toast(placeName(SCENES[i]), 2600);
   sound.setScene(SCENES[i].id, 6);
   clearTimeout(switching);
   fire.fadeOut = 1.4; fire.fadeTarget = 1;
   switching = setTimeout(() => {
-    fire.setScene(i, phase === 'lit');
-    fire.fadeIn = 2.6; fire.fadeTarget = phase === 'lit' ? 0 : 0.82;
+    const lit = phase === 'lit';
+    fire.setScene(i, lit);
+    if (!lit) fire.setEmber(true, 0);
+    fire.fadeIn = 2.6; fire.fadeTarget = lit ? 0 : IDLE;
+    switching = setTimeout(() => { switchBusy = false; }, 1000);
   }, 1600);
 }
 
@@ -255,7 +325,7 @@ choices($('brightChoices'), BRIGHT.map((_, i) => ({ html: `<i style="width:${7 +
 choices($('warmChoices'), WARMTH, () => st.warm, (i) => { st.warm = i; fire.set({ warm: i }); });
 const ORDERS = ['order', 'random', 'one'];
 choices($('orderChoices'), [{ name: '順番に' }, { name: 'ばらばら' }, { name: '1曲くり返し' }], () => Math.max(0, ORDERS.indexOf(st.order)), (i) => { st.order = ORDERS[i]; music.order = st.order; });
-choices($('sleepChoices'), SLEEPS, () => sleepIdx, (i) => setSleep(i));
+choices($('sleepChoices'), SLEEPS, () => sleepIdx, (i) => { setSleep(i); openSheet(null); });   // 選んだら 板を閉じる
 
 function refreshChoices() {
   document.querySelectorAll('.choices').forEach((el) => {
@@ -269,9 +339,17 @@ $('out').addEventListener('click', () => { if (phase === 'lit') putOut(); });
 
 // ---------- おやすみ ----------
 // 時間は Date.now() で見る。画面が消えて描くのが止まっても、1秒ごとの見張りで 終わりを必ず通る。
-let sleepIdx = 0, sleepEnd = 0, faded = false, sleepWatch = 0;
+let sleepIdx = 0, sleepEnd = 0, faded = false, sleepWatch = 0, sleepStopping = false;
+// 最後の1分で 小さくしていた音・曲・火を もどす(おやすみを 変えた・やめたとき)
+function unfade() {
+  if (!faded) return;
+  faded = false;
+  sound.fadeTo(1, 3);
+  fire.dim = 1;
+  if (sleepStopping) { sleepStopping = false; if (st.musicOn && music.tracks.length && !music.playing) music.play(3); }
+}
 function setSleep(i) {
-  sleepIdx = i; faded = false;
+  sleepIdx = i; unfade();
   if (SLEEPS[i].min === 0) { clearSleep(); fire.dim = 1; }
   else {
     sleepEnd = Date.now() + SLEEPS[i].min * 60000;
@@ -281,7 +359,7 @@ function setSleep(i) {
   refreshLabels();
 }
 function sleepSecs(s) {   // 確かめ用(短い時間で おやすみ)
-  sleepIdx = 1; faded = false; sleepEnd = Date.now() + s * 1000;
+  sleepIdx = 1; unfade(); sleepEnd = Date.now() + s * 1000;
   clearInterval(sleepWatch); sleepWatch = setInterval(sleepTick, 1000);
   refreshLabels();
 }
@@ -293,10 +371,18 @@ function clearSleep() {
 function sleepTick() {
   if (!sleepEnd || phase !== 'lit') return;
   const left = (sleepEnd - Date.now()) / 1000;
+  if (left <= 0) {
+    // 画面を消している間・ほかのアプリの間に すぎていた → 音を出さずに 真っ黒のまま
+    if (document.hidden || left < -5) { goDark(); return; }
+    if (switchBusy) return;   // 場所の切りかえ中なら、切りかえが すんでから(1秒ごとに また見る)
+    sleepOut(); return;
+  }
   // 最後の1分: 曲と音を 少しずつ小さく、火も ほんの少し暗く
-  if (left <= 60 && !faded) { faded = true; sound.fadeTo(0.55, Math.max(3, left)); if (music.playing) music.fadeOut(Math.max(5, left)); }
+  if (left <= 60 && !faded) {
+    faded = true; sound.fadeTo(0.55, Math.max(3, left));
+    if (music.playing) { sleepStopping = true; music.fadeOut(Math.max(5, left)); }
+  }
   fire.dim = left < 60 ? 0.82 + 0.18 * Math.max(0, left) / 60 : 1;
-  if (left <= 0) sleepOut();
 }
 
 let labelT = 0;
@@ -321,7 +407,20 @@ function refreshLabels() {
 }
 
 // ---------- 音 ----------
-sound.load().then((ok) => { if (ok) $('soundBtn').hidden = false; });
+sound.load().then((ok) => { if (ok) $('soundBtn').hidden = false; cleanCaches(ok ? sound.rev : null); });
+
+// スマホに覚えた 古い動画・音を消す(作り直して MEDIA_V や 音の v が上がったら、前のものは もう使わない)
+async function cleanCaches(soundRev) {
+  try {
+    if (!('caches' in window) || !(await caches.has('takibi-keep'))) return;
+    const c = await caches.open('takibi-keep');
+    for (const r of await c.keys()) {
+      const u = new URL(r.url);
+      if (/\/media\//.test(u.pathname)) { if (u.search !== '?v=' + MEDIA_V) await c.delete(r); }
+      else if (/\/sound\/.+\.(m4a|mp3|aac|ogg|wav)$/i.test(u.pathname) && soundRev != null) { if (u.search !== soundRev) await c.delete(r); }
+    }
+  } catch (e) {}
+}
 $('splay').addEventListener('click', () => {
   st.soundOn = !st.soundOn; save();
   if (st.soundOn) startSound(); else sound.stop(1.5);
@@ -333,7 +432,6 @@ $('fireVol').addEventListener('input', (e) => { st.fireVol = +e.target.value; so
 $('ambVol').addEventListener('input', (e) => { st.ambVol = +e.target.value; sound.setAmb(st.ambVol / 100); save(); });
 
 // ---------- 曲(music/tracks.json に曲があるときだけ) ----------
-let sleepStopping = false;
 music.onchange = () => {
   if (!sleepStopping) st.musicOn = music.playing;
   st.track = music.idx; save();
@@ -375,9 +473,12 @@ function closeSound() { sound.suspend(); if (music.pauseNow()) resumeMusic = tru
 addEventListener('pagehide', closeSound);
 document.addEventListener('visibilitychange', () => {
   if (document.hidden) { fire.stop(); closeSound(); return; }
+  // はなれている間に おやすみの時間がすぎていた → 音を出さずに すぐ真っ黒
+  if (phase === 'lit' && sleepEnd && Date.now() >= sleepEnd) { goDark(); return; }
   if (phase === 'slept') {
     // 暗くなる途中で離れていたら、真っ暗にしておく
-    if (fire.ending && fire.ending.done) { fire.fade = fire.fadeTarget = 1; fire.draw(); sound.stop(0.1); return; }
+    if (darkDone) return;
+    if (fire.ending && fire.ending.done) { clearTimeout(outT); finishDark(); return; }
   }
   fire.start();
   if (phase === 'lit' || phase === 'slept') { sound.resume(); }
@@ -399,10 +500,12 @@ if (document.documentElement.requestFullscreen && !isIOS) {
   document.addEventListener('fullscreenchange', () => { fs.textContent = document.fullscreenElement ? '元にもどす' : '画面いっぱいにする'; });
 }
 if (inLine) $('lineNote').hidden = false;
+// ホーム画面に入れる案内(年配の人にも分かるように。改行の位置は 手で決める)
+const SHARE = '<svg class="ico" viewBox="0 0 24 24" aria-label="四角に上向きの矢印の印"><path d="M8.5 9H6v11h12V9h-2.5"/><path d="M12 3v11M8.5 6.5 12 3l3.5 3.5"/></svg>';
 if (!standalone && !inLine && matchMedia('(pointer: coarse)').matches) {
-  $('installNote').textContent = isIOS
-    ? 'Safariの共有ボタンから「ホーム画面に追加」をすると、アプリのように開けます。'
-    : 'ブラウザのメニューから「ホーム画面に追加」をすると、アプリのように開けます。';
+  $('installNote').innerHTML = isIOS
+    ? `ホーム画面に入れると、<br>アプリのように すぐ開けます。<br>画面の下の ${SHARE}(□に↑の印)<br>または「…」を押して、<br>『ホーム画面に追加』を えらびます。`
+    : 'ホーム画面に入れると、<br>アプリのように すぐ開けます。<br>右上の「︙」を押して、<br>『ホーム画面に追加』を えらびます。';
 }
 let installEvt = null;
 addEventListener('beforeinstallprompt', (e) => {
