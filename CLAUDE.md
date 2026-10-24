@@ -39,5 +39,17 @@
 - 仕上げに `iphone-check` スキル(古い iPhone・LINE の中・Android)。
 - 仮の動画・アイコンの作り方は `_check/app/`(make_placeholder.sh・icons.py)。本物が来たら使わない。
 
+## 動画の作り方(リーダー, 2026-10-25)
+- Google Flow のプロジェクト「焚き火 takibi」。指示文は tools/flow_prompts.py。
+- 静止画: Nano Banana Pro・9:16・x2 で2枚ずつ出して選んだ(0クレジット)。山 =「Campfire burning in mountain cle…」(天の川)、海 =「Campfire burning on sandy beach」(月の道)。
+  フレームの絵を選ぶ板では 検索欄に「mountain cle」「sandy beach」と打つと1つだけ出る(並び順は毎回変わるので 位置で選ばない)。
+- 動画: Veo 3.1 Lite・9:16・8秒・x1(10クレジット)。フレーム: 開始=終了=その静止画。動画を作ると 開始・終了は空になるので 毎回えらびなおす。
+  熾火になる動画(end)は 開始だけ指定(山の熾火の静止画は 形が変わってしまったので使わなかった)。
+- 目で見て外した動画は tools/flow_media.py の BAD。「薪がくずれる・置かれる」と頼むと、薪が空中から飛んできて消える → 薪を動かす指示はしない。
+- 保存: Chrome は「1つのタブで2回目からの保存」を止める。画像は 別のタブで …/asb/…=d を開くと保存できる。
+  動画は まだ保存していない新しいタブでプロジェクトを開き、ページの中で動画を1本ずつ開いて fetch で集め、1つにまとめて「保存」リンクを置いてクリック(1回だけ)→ tools/unpack.py でほどく。
+- そろえる: `~/.local/venvs/ryokoshi/bin/python tools/flow_media.py`(--check で つなぎ目の差・炎の動きだけ見る)。差は 3.5〜5.2 なら つないでも分からない。作り直したら MEDIA_V を上げる。
+- 人のペースの決まりで 1時間24回まで。
+
 ## まだのこと
 - 作っている途中(2026-10-25)
