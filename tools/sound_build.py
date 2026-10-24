@@ -127,52 +127,41 @@ def ring_tile(x, L, c, offsets=None):
     return buf
 
 
-def limiter(x, ceiling_db=-1.5, release=0.08, look=0.004):
-    """先読みのピークリミッター(はぜる音の とがりだけを丸める)。"""
-    ceil = 10 ** (ceiling_db / 20)
-    a = np.abs(x).max(axis=1)
-    need = np.minimum(1.0, ceil / np.maximum(a, 1e-12))      # 各サンプルで必要な倍率
-    la = sec(look)
-    # 先読み: 先 la サンプルの最小値
+def _release(g, r):
+    """ゲインが下がるときはすぐ、戻るときは r の速さでゆっくり。"""
+    try:
+        from numba import njit
+    except Exception:
+        njit = None
+    def run(g, r):
+        out = np.empty_like(g)
+        cur = 1.0
+        for i in range(g.shape[0]):
+            v = g[i]
+            cur = v if v < cur else v + (cur - v) * r
+            out[i] = cur
+        return out
+    return (njit(cache=False)(run) if njit else run)(g, r)
+
+
+def limiter_fast(x, ceiling_db=-2.0, release=0.03, look=0.003):
+    """先読みのピークリミッター(はぜる音の とがりだけを丸める。波形を切らない)。
+    必要な倍率の「前後 look 秒の最小値」をとり、それを look 秒の窓でなめらかにするので、
+    ピークの位置では必ず必要な倍率以下になる(切り落としが起きない)。"""
     from scipy.ndimage import minimum_filter1d
-    g = minimum_filter1d(need, size=2 * la + 1, origin=0)
-    # 戻り(リリース)はなめらかに
-    r = np.exp(-1.0 / (release * SR))
-    out = np.empty_like(g)
-    cur = 1.0
-    for i in range(len(g)):   # 速さは足りる(数百万サンプル)
-        cur = g[i] if g[i] < cur else g[i] + (cur - g[i]) * r
-        out[i] = cur
-    # はじまりの角をなくすために少しなめらかに
-    k = np.hanning(2 * la + 1); k /= k.sum()
-    out = np.minimum(np.convolve(out, k, mode="same"), g + 1e-9) if False else np.convolve(out, k, mode="same")
-    out = np.minimum(out, 1.0)
-    y = x * out[:, None]
-    # 念のため最後に はみ出しを確実に止める
-    return np.clip(y, -ceil, ceil)
-
-
-def limiter_fast(x, ceiling_db=-1.5, release=0.08, look=0.004):
-    """limiter と同じ考え方を、ループなしで(ブロックごとの包絡)。"""
     ceil = 10 ** (ceiling_db / 20)
     a = np.abs(x).max(axis=1)
-    from scipy.ndimage import maximum_filter1d
-    from scipy.signal import lfilter
+    need = np.minimum(1.0, ceil / np.maximum(a, 1e-12))
     la = sec(look)
-    pk = maximum_filter1d(a, size=2 * la + 1)
-    # ピーク包絡: 速く上がり ゆっくり下がる(リリース)
-    r = np.exp(-1.0 / (release * SR))
-    env = pk.copy()
-    # 下がる方向だけ1次のなめらかさ: 逆向きの max と lfilter の組み合わせで近い形にする
-    sm = lfilter([1 - r], [1, -r], pk)
-    env = np.maximum(pk, sm)
-    g = np.minimum(1.0, ceil / np.maximum(env, 1e-12))
-    k = np.hanning(2 * la + 1); k /= k.sum()
+    g = minimum_filter1d(need, size=2 * la + 1)
+    g = _release(g, np.exp(-1.0 / (release * SR)))
+    g = np.minimum(g, minimum_filter1d(need, size=2 * la + 1))
+    k = np.hanning(la + 1); k /= k.sum()
     g = np.convolve(g, k, mode="same")
-    return np.clip(x * g[:, None], -ceil, ceil)
+    return x * g[:, None]
 
 
-def to_lufs(x, target, ceiling_db=-1.5, iters=3):
+def to_lufs(x, target, ceiling_db=-2.0, iters=4):
     """音量を target LUFS にそろえる(とがったピークはリミッターで丸める)。"""
     y = x
     for _ in range(iters):
@@ -182,10 +171,9 @@ def to_lufs(x, target, ceiling_db=-1.5, iters=3):
     return y, i, tp
 
 
-def finish_loop(name, ring, target, ceiling=-1.5):
+def finish_loop(name, ring):
     """輪(ring)を仕上げて m4a にする。前後に PAD 秒の続きを足す。"""
-    ring, i, tp = to_lufs(ring, target, ceiling)
-    # リミッターは輪の継ぎ目をまたいでも同じになるように、輪を3周つないでから真ん中を使う
+    i, tp = lufs(ring)   # 音量は ring_limit_target でそろえ済み。ここでは測るだけ(継ぎ目を変えない)
     p = sec(PAD)
     full = np.concatenate([ring[-p:], ring, ring[:p]])
     wav = os.path.join(WORK, name + ".wav")
@@ -198,7 +186,26 @@ def finish_loop(name, ring, target, ceiling=-1.5):
             "duration": round(len(full) / SR, 4), "lufs": round(i, 1)}
 
 
-def ring_limit_target(ring, target, ceiling=-1.5):
+def slow_level(ring, win=8.0, strength=0.6):
+    """ゆっくりした音量の波をならす(火が急に強く/弱くなる差を 6 割ほど小さく)。輪のまま計算するので継ぎ目に影響しない。"""
+    hop = SR // 10
+    L = len(ring)
+    e = (ring ** 2).mean(axis=1)
+    n = L // hop
+    blk = e[:n * hop].reshape(n, hop).mean(axis=1)
+    k = int(win * 10)
+    ker = np.hanning(2 * k + 1); ker /= ker.sum()
+    ext = np.concatenate([blk[-k:], blk, blk[:k]])          # 輪としてなめらかに
+    loc = np.convolve(ext, ker, mode="valid")
+    db = 10 * np.log10(loc + 1e-15)
+    gdb = -(db - np.mean(db)) * strength
+    t_blk = (np.arange(n) + 0.5) * hop
+    t = np.arange(L)
+    g = 10 ** (np.interp(t, np.concatenate([t_blk - L, t_blk, t_blk + L]), np.tile(gdb, 3)) / 20)
+    return ring * g[:, None]
+
+
+def ring_limit_target(ring, target, ceiling=-2.0):
     """輪のままリミッターをかける(継ぎ目でリミッターの動きが途切れないよう、3周ぶんで処理)。"""
     L = len(ring)
     tri = np.concatenate([ring, ring, ring])
@@ -222,9 +229,9 @@ def make_fire_yama():
     x = concat_xfade(a, b, 3.0)
     x = hp(x, 110, 4)              # マイクにあたる風の低いゴー(110Hz より下)を切る
     L = len(x) - sec(3.0)
-    ring = ring_tile(x, L, 3.0)
-    ring = ring_limit_target(ring, -20.0)
-    return finish_loop("fire-1", ring, -20.0)
+    ring = slow_level(ring_limit_target(ring_tile(x, L, 3.0), -22.0, ceiling=-4.5), strength=0.7)
+    ring = ring_limit_target(ring, -21.0, ceiling=-4.5)   # AAC にするとピークが 3dB ほど上がるので低めに
+    return finish_loop("fire-1", ring)
 
 
 def make_fire_umi():
@@ -235,9 +242,9 @@ def make_fire_umi():
     x = concat_xfade(a, b, 3.0)
     x = hp(x, 60, 2)
     L = len(x) - sec(3.0)
-    ring = ring_tile(x, L, 3.0)
-    ring = ring_limit_target(ring, -21.0)
-    return finish_loop("fire-2", ring, -21.0)
+    ring = slow_level(ring_limit_target(ring_tile(x, L, 3.0), -22.0, ceiling=-4.5), strength=0.7)
+    ring = ring_limit_target(ring, -22.0, ceiling=-4.5)
+    return finish_loop("fire-2", ring)
 
 
 def make_umi():
@@ -247,8 +254,8 @@ def make_umi():
     x = high_shelf_cut(x, 3500, -7)
     L = len(x) - sec(6.0)
     ring = ring_tile(x, L, 6.0)
-    ring = ring_limit_target(ring, -24.0)
-    return finish_loop("umi-1", ring, -24.0)
+    ring = ring_limit_target(ring, -24.0, ceiling=-4.5)
+    return finish_loop("umi-1", ring)
 
 
 def make_yama():
@@ -284,8 +291,8 @@ def make_yama():
         # 鳴いているあいだ、虫より 6 LU くらい小さい音に
         st2 *= 10 ** ((bed_i - 6 - hb) / 20)
         ring_place(bed, st2, sec(at_t), 0.01)
-    ring = ring_limit_target(bed, -24.0)
-    return finish_loop("yama-1", ring, -24.0)
+    ring = ring_limit_target(bed, -24.0, ceiling=-4.5)
+    return finish_loop("yama-1", ring)
 
 
 def make_pops():

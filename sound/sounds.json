@@ -1,0 +1,97 @@
+{
+  "version": 1,
+  "fire": [
+    {
+      "file": "sound/fire-1.m4a",
+      "gain": 0.8,
+      "loopStart": 0.5,
+      "loopEnd": 187.0,
+      "scene": "yama",
+      "label": "外の焚き火(乾いた枝・パチパチ多め)",
+      "duration": 187.5,
+      "lufs": -21.0
+    },
+    {
+      "file": "sound/fire-2.m4a",
+      "gain": 0.8,
+      "loopStart": 0.5,
+      "loopEnd": 134.4,
+      "scene": "umi",
+      "label": "暖炉の火(落ち着いたパチパチ)",
+      "duration": 134.9,
+      "lufs": -22.0
+    }
+  ],
+  "yama": [
+    {
+      "file": "sound/yama-1.m4a",
+      "gain": 0.55,
+      "loopStart": 0.5,
+      "loopEnd": 156.5,
+      "label": "夜の山(虫とカエル・かすかな沢・遠いフクロウ)",
+      "duration": 157.0,
+      "lufs": -24.0
+    }
+  ],
+  "umi": [
+    {
+      "file": "sound/umi-1.m4a",
+      "gain": 0.55,
+      "loopStart": 0.5,
+      "loopEnd": 130.5,
+      "label": "砂浜に寄せる小さな波(遠め)",
+      "duration": 131.0,
+      "lufs": -24.0
+    }
+  ],
+  "pops": [
+    {
+      "file": "sound/pop-01.m4a",
+      "gain": 0.5
+    },
+    {
+      "file": "sound/pop-02.m4a",
+      "gain": 0.5
+    },
+    {
+      "file": "sound/pop-03.m4a",
+      "gain": 0.5
+    },
+    {
+      "file": "sound/pop-04.m4a",
+      "gain": 0.5
+    },
+    {
+      "file": "sound/pop-05.m4a",
+      "gain": 0.5
+    },
+    {
+      "file": "sound/pop-06.m4a",
+      "gain": 0.5
+    },
+    {
+      "file": "sound/pop-07.m4a",
+      "gain": 0.5
+    },
+    {
+      "file": "sound/pop-08.m4a",
+      "gain": 0.5
+    },
+    {
+      "file": "sound/pop-09.m4a",
+      "gain": 0.5
+    },
+    {
+      "file": "sound/pop-10.m4a",
+      "gain": 0.5
+    },
+    {
+      "file": "sound/pop-11.m4a",
+      "gain": 0.5
+    },
+    {
+      "file": "sound/pop-12.m4a",
+      "gain": 0.5
+    }
+  ]
+}
