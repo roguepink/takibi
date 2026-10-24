@@ -1,6 +1,6 @@
 // 焚き火の場面。tools/flow_media.py が作る(手で直さない)。2026-10-25 Google Flow(Veo 3.1 Lite)
-// clips はどれも 同じ絵で始まって 同じ絵で終わる 8秒の動画。アプリがランダムな順番でつなぐ。end = 熾火になる動画(おやすみの終わり)
-export const MEDIA_V = 3;   // 絵と動画を作り直したら上げる
+// clips はどれも 同じ絵で始まって 同じ絵で終わる 8秒の動画。アプリがランダムな順番でつなぐ。end = 熾火になる動画(おやすみの終わり)、ember = end の最後の絵(熾火だけ)
+export const MEDIA_V = 4;   // 絵と動画を作り直したら上げる
 export const SCENES = [
   {
     "id": "yama",
@@ -15,13 +15,15 @@ export const SCENES = [
       "media/yama/07.mp4",
       "media/yama/08.mp4",
       "media/yama/09.mp4",
-      "media/yama/10.mp4"
+      "media/yama/10.mp4",
+      "media/yama/11.mp4"
     ],
     "still": "media/yama/still.jpg",
     "end": "media/yama/end.mp4",
+    "ember": "media/yama/ember.jpg",
     "fire": [
       0.496,
-      0.616
+      0.617
     ]
   },
   {
@@ -37,13 +39,15 @@ export const SCENES = [
       "media/umi/07.mp4",
       "media/umi/08.mp4",
       "media/umi/09.mp4",
-      "media/umi/10.mp4"
+      "media/umi/10.mp4",
+      "media/umi/11.mp4"
     ],
     "still": "media/umi/still.jpg",
     "end": "media/umi/end.mp4",
+    "ember": "media/umi/ember.jpg",
     "fire": [
-      0.533,
-      0.591
+      0.532,
+      0.593
     ]
   }
 ];

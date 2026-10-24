@@ -21,9 +21,9 @@ from PIL import Image
 ROOT = Path(__file__).resolve().parent.parent
 RAW = ROOT / "_check/flow/raw"
 W, H = 720, 1280
-MEDIA_V = 3          # 動画・静止画を作り直したら 1つ上げる(スマホに覚えた古い絵を使わせないため)
+MEDIA_V = 4          # 動画・静止画を作り直したら 1つ上げる(スマホに覚えた古い絵を使わせないため)
 SCENES = [("yama", "山"), ("umi", "海")]
-BAD = {"yama-03", "umi-03", "yama-08"}   # 2026-10-25 目で見て外した: 03 = 薪が空中から飛んできて消える、yama-08 = 一瞬 画面全体が明るくなる
+BAD = {"yama-03", "umi-03", "yama-08", "yama-05", "umi-06", "umi-08"}   # 目で見て外した: 03 = 薪が空中から飛んできて消える、yama-08 = 一瞬 画面全体が明るくなる、yama-05・umi-06・umi-08 = 火の粉が花火のように吹き上がる(デザイン係の見直し 2026-10-25)
 
 
 def frames(src, fps=8, size=(180, 320)):
@@ -42,10 +42,11 @@ def check(src):
     return seam, motion, rest, len(f) / 8
 
 
-def encode(src, dst, crf=26):
+def encode(src, dst, crf=27):
+    # 重さの上限 1.1Mbps(UI/UX係 2026-10-25: 電波が弱いと 山の動画 約2Mbps ではカクカク止まった)。夜の火なので画質の差はほとんど見えない
     subprocess.run(["ffmpeg", "-loglevel", "error", "-y", "-i", str(src), "-an",
                     "-vf", f"scale={W}:{H}:force_original_aspect_ratio=increase,crop={W}:{H},fps=24",
-                    "-c:v", "libx264", "-crf", str(crf), "-preset", "slow", "-pix_fmt", "yuv420p", "-movflags", "+faststart", str(dst)], check=True)
+                    "-c:v", "libx264", "-crf", str(crf), "-maxrate", "1100k", "-bufsize", "2200k", "-preset", "slow", "-pix_fmt", "yuv420p", "-movflags", "+faststart", str(dst)], check=True)
 
 
 def main():
@@ -72,6 +73,8 @@ def main():
         end = RAW / f"{sid}-end.mp4"
         if end.exists():
             encode(end, d / "end.mp4")
+            # 熾火の絵 = end の最後のこま。火をつける前・火を消したあとに見せる(UI/UX係: 炎が見えると「ふれると、火がともります」と合わない)
+            subprocess.run(["ffmpeg", "-loglevel", "error", "-y", "-sseof", "-0.1", "-i", str(d / "end.mp4"), "-vframes", "1", "-q:v", "3", str(d / "ember.jpg")], check=True)
         if names:
             subprocess.run(["ffmpeg", "-loglevel", "error", "-y", "-i", str(ROOT / names[0]), "-vframes", "1", "-q:v", "3", str(d / "still.jpg")], check=True)
             im = Image.open(d / "still.jpg").convert("RGB")
@@ -82,11 +85,12 @@ def main():
             L = np.asarray(Image.open(d / "still.jpg").convert("L"), dtype=np.float32)
             ys, xs = np.where(L >= max(200, np.percentile(L, 99.5)))
             fire = [round(float(np.median(xs)) / W, 3), round(float(np.median(ys)) / H, 3)]   # 火の位置(「大きさ」の中心)
-        out.append(dict(id=sid, name=name, clips=names, still=f"media/{sid}/still.jpg", end=f"media/{sid}/end.mp4" if end.exists() else None, fire=fire))
+        out.append(dict(id=sid, name=name, clips=names, still=f"media/{sid}/still.jpg", end=f"media/{sid}/end.mp4" if end.exists() else None,
+                        ember=f"media/{sid}/ember.jpg" if end.exists() else None, fire=fire))
     if only_check:
         return
     js = ["// 焚き火の場面。tools/flow_media.py が作る(手で直さない)。2026-10-25 Google Flow(Veo 3.1 Lite)",
-          "// clips はどれも 同じ絵で始まって 同じ絵で終わる 8秒の動画。アプリがランダムな順番でつなぐ。end = 熾火になる動画(おやすみの終わり)",
+          "// clips はどれも 同じ絵で始まって 同じ絵で終わる 8秒の動画。アプリがランダムな順番でつなぐ。end = 熾火になる動画(おやすみの終わり)、ember = end の最後の絵(熾火だけ)",
           f"export const MEDIA_V = {MEDIA_V};   // 絵と動画を作り直したら上げる",
           "export const SCENES = " + json.dumps(out, ensure_ascii=False, indent=2) + ";", ""]
     (ROOT / "js/scenes.js").write_text("\n".join(js))
