@@ -1,0 +1,96 @@
+<!doctype html>
+<html lang="ja">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, user-scalable=no">
+<meta name="theme-color" content="#000000">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="ひとくべ">
+<meta name="description" content="ひとくべ — 山と海の焚き火を、ただ眺める。パチパチという音と、夜の森・波の音。広告なし。">
+<title>ひとくべ</title>
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="icon" href="icons/icon-192.png">
+<link rel="apple-touch-icon" href="icons/apple-touch-icon.png">
+<meta property="og:title" content="ひとくべ">
+<meta property="og:description" content="山と海の焚き火を、ただ眺める。">
+<meta property="og:image" content="https://roguepink.github.io/takibi/icons/ogp.jpg">
+<meta property="og:url" content="https://roguepink.github.io/takibi/">
+<meta property="og:type" content="website">
+<meta name="twitter:card" content="summary_large_image">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<!-- 文字の形は あとから読みこむ(通信が遅くても ページは先に出す) -->
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Zen+Old+Mincho&display=swap" media="print" onload="this.media='all'">
+<style>
+  html, body { background: #000; }
+</style>
+<link rel="stylesheet" href="css/app.css">
+</head>
+<body>
+<div id="scene" class="scene" aria-hidden="true"></div>
+
+<!-- はじめの名前(たて書き) -->
+<div id="title" class="title" aria-hidden="true">ひとくべ</div>
+<p id="hint" class="hint" role="status"></p>
+<button id="relight" class="relight" hidden>もう一度、火をつける</button>
+<p id="toast" class="toast" aria-live="polite"></p>
+
+<!-- 操作の部品(ふだんは かくれている) -->
+<div id="ui" class="ui" aria-hidden="true">
+  <div id="drawer" class="drawer">
+    <!-- 場所を選ぶ -->
+    <section id="place" class="sheet" hidden aria-label="場所を選ぶ">
+      <div id="places" class="places"></div>
+    </section>
+
+    <!-- 音 -->
+    <section id="sound" class="sheet" hidden aria-label="音">
+      <div class="row"><button id="splay" class="big">音を止める</button></div>
+      <div class="row"><span class="lab">焚き火の音</span><input id="fireVol" type="range" min="0" max="100" step="1" aria-label="焚き火の音の大きさ"></div>
+      <div class="row"><span class="lab" id="ambLab">まわりの音</span><input id="ambVol" type="range" min="0" max="100" step="1" aria-label="まわりの音の大きさ"></div>
+    </section>
+
+    <!-- 曲(music/tracks.json に曲があるときだけ) -->
+    <section id="music" class="sheet" hidden aria-label="曲">
+      <div class="row"><button id="mplay" class="big">流す</button></div>
+      <div class="row"><span class="lab">曲の大きさ</span><input id="vol" type="range" min="0" max="100" step="1" aria-label="曲の大きさ"></div>
+      <div class="row"><span class="lab">曲の順番</span><div class="choices" id="orderChoices"></div></div>
+      <ol id="tracks" class="tracks"></ol>
+    </section>
+
+    <!-- おやすみ(タイマー) -->
+    <section id="sleep" class="sheet" hidden aria-label="おやすみ">
+      <p class="note">時間がくると、火がゆっくり小さくなって、熾火(おきび)になります。</p>
+      <div class="choices wrap" id="sleepChoices"></div>
+    </section>
+
+    <!-- ととのえる -->
+    <section id="adjust" class="sheet" hidden aria-label="ととのえる">
+      <div class="row"><span class="lab">大きさ</span><div class="choices" id="sizeChoices"></div></div>
+      <div class="row"><span class="lab">明るさ</span><div class="choices dots" id="brightChoices"></div></div>
+      <div class="row"><span class="lab">色あい</span><div class="choices" id="warmChoices"></div></div>
+      <div class="row end">
+        <button id="out" class="link">火を消す</button>
+        <button id="fs" class="link" hidden>画面いっぱいにする</button>
+      </div>
+      <p id="lineNote" class="note" hidden>LINEの中ではなく、ブラウザで開くと、画面が消えずにずっと表示できます。</p>
+      <p id="wakeNote" class="note" hidden>しばらくすると画面が消えるときは、スマホの「自動ロック」を長めにしてください。</p>
+      <p id="installNote" class="note"></p>
+      <p class="credit">ひとくべ ・ ROGUE PINK</p>
+    </section>
+  </div>
+
+  <nav id="bar" class="bar" aria-label="操作">
+    <button data-open="place"><svg viewBox="0 0 24 24"><path d="M2.5 19.5 9 9l3.5 5.5L15 11l6.5 8.5Z"/><path d="M7.3 11.8 9 13l1.6-1"/></svg><span>場所</span></button>
+    <button id="soundBtn" data-open="sound" hidden><svg viewBox="0 0 24 24"><path d="M4 9.5h3.5L12 5.5v13l-4.5-4H4Z"/><path d="M15.5 9a4.5 4.5 0 0 1 0 6"/><path d="M18 6.5a8 8 0 0 1 0 11"/></svg><span>音</span></button>
+    <button id="musicBtn" data-open="music" hidden><svg viewBox="0 0 24 24"><path d="M9 18.5V6l10-2v12"/><circle cx="6.5" cy="18.5" r="2.5"/><circle cx="16.5" cy="16" r="2.5"/></svg><span>曲</span></button>
+    <button data-open="sleep"><svg viewBox="0 0 24 24"><path d="M19.5 14.5A8 8 0 0 1 9.5 4.5a8 8 0 1 0 10 10Z"/></svg><span id="sleepLab">おやすみ</span></button>
+    <button data-open="adjust"><svg viewBox="0 0 24 24"><path d="M4 7h16M4 12h16M4 17h16"/><circle cx="9" cy="7" r="1.6"/><circle cx="15" cy="12" r="1.6"/><circle cx="7" cy="17" r="1.6"/></svg><span>ととのえる</span></button>
+  </nav>
+</div>
+
+<script type="module" src="js/app.js"></script>
+</body>
+</html>
