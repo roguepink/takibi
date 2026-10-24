@@ -66,7 +66,7 @@
 - 人のペースの決まりで 1時間24回まで。
 
 ## まだのこと
-- 2026-10-25 できあがり(リーダーが ui_check・iphone-check 8機種 ○ を確かめた)。**GitHub Pages ではまだ公開していない**(ノブさんの OK 待ち)。公開したら roguepink.com/apps への掲載も聞く。
+- 2026-10-25 ノブさん「公開して」で GitHub Pages 公開: https://roguepink.github.io/takibi/ (公開アドレスで iphone-check 8機種 ○)。roguepink.com/apps への掲載はまだ(聞いてから)。
 - 本物の iPhone・Android・LINE の中では見ていない。音も実機では鳴らしていない(低電力モードで次の動画が流れるか、電波なしで開けるか も実機で)。
 - 山の虫の音は 57秒の録音のくり返し(約52秒ごとに似る)。長い CC0 の録音が見つかれば入れかえる。
 - 曲(Suno)はまだ無い。入れるなら music/tracks.json(一灯と同じ形)。
