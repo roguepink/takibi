@@ -157,7 +157,7 @@ export class Fire {
   // 混ぜなおす。はじめの数本が 直前に流したものと同じにならないように
   refill(list, rec) {
     if (list.length < 2) return list.slice();
-    const k = Math.min(2, list.length - 1), last = rec.slice(-k);
+    const k = Math.max(1, Math.min(3, list.length - 2)), last = rec.slice(-k);   // 11本なら 直前3本をさける(同じ動画は 4本以上あけて出る)
     let b = shuffle(list);
     for (let n = 0; n < 30 && b.slice(0, k).some((x) => last.includes(x)); n++) b = shuffle(list);
     return b;
