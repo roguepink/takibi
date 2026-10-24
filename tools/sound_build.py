@@ -23,7 +23,7 @@ WORK = os.path.join(ROOT, "_check", "sound-work")
 OUT = os.path.join(ROOT, "sound")
 SR = 48000
 PAD = 0.5          # 秒。loopStart
-BITRATE = "112k"
+BITRATE = "72k"   # 2026-10-25 直す係: 112k → 72k(遅い回線のため。sound_check でつなぎ目を確かめた)
 rng = np.random.default_rng(20261025)
 
 
@@ -42,7 +42,7 @@ def save_wav(path, x):
 
 def encode_m4a(wav, m4a, mono=False):
     # mono: 左右が まったく同じ音は 1ch で書く(ブラウザで開いたときのメモリが半分になる。古い iPhone のため)
-    ch = ["-ac", "1", "-b:a", "80k"] if mono else ["-b:a", BITRATE]
+    ch = ["-ac", "1", "-b:a", "64k"] if mono else ["-b:a", BITRATE]
     subprocess.run(["ffmpeg", "-nostdin", "-v", "error", "-y", "-i", wav, "-c:a", "aac_at", *ch,
                     "-movflags", "+faststart", m4a], check=True)
 
