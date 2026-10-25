@@ -66,7 +66,7 @@
 - 人のペースの決まりで 1時間24回まで。
 
 ## まだのこと
-- 2026-10-25 ノブさん「公開して」で GitHub Pages 公開: https://roguepink.github.io/takibi/ (公開アドレスで iphone-check 8機種 ○)。roguepink.com/apps への掲載はまだ(聞いてから)。
+- 2026-10-25 ノブさん「公開して」で GitHub Pages 公開: https://roguepink.github.io/takibi/ (公開アドレスで iphone-check 8機種 ○)。同日 ノブさん「ホームページにも」で roguepink.com/apps に掲載(home-page PR #96、TOOL_ENTRIES の one candle の下、public/apps/hitokube.png、読み辞書に 熾火・焚き火・天の川)。
 - 本物の iPhone・Android・LINE の中では見ていない。音も実機では鳴らしていない(低電力モードで次の動画が流れるか、電波なしで開けるか も実機で)。
 - 山の虫の音は 57秒の録音のくり返し(約52秒ごとに似る)。長い CC0 の録音が見つかれば入れかえる。
 - 曲(Suno)はまだ無い。入れるなら music/tracks.json(一灯と同じ形)。
