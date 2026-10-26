@@ -1,7 +1,7 @@
 {
   "name": "ひとくべ",
   "short_name": "ひとくべ",
-  "description": "山と海の焚き火を、ただ眺める。広告なし。",
+  "description": "山と海の焚き火を、ただ眺める。短い映像をランダムにつなぐので、同じ燃え方がくり返しにくい。音は本物の焚き火の録音。広告なし。",
   "lang": "ja",
   "start_url": "./",
   "scope": "./",
@@ -14,5 +14,11 @@
     { "src": "icons/icon-192.png", "sizes": "192x192", "type": "image/png", "purpose": "any" },
     { "src": "icons/icon-512.png", "sizes": "512x512", "type": "image/png", "purpose": "any" },
     { "src": "icons/maskable-512.png", "sizes": "512x512", "type": "image/png", "purpose": "maskable" }
+  ],
+  "screenshots": [
+    { "src": "shots/1.jpg", "sizes": "360x640", "type": "image/jpeg", "form_factor": "narrow", "label": "山の焚き火(天の川)" },
+    { "src": "shots/2.jpg", "sizes": "360x640", "type": "image/jpeg", "form_factor": "narrow", "label": "海の焚き火(月の道)" },
+    { "src": "shots/3.jpg", "sizes": "360x640", "type": "image/jpeg", "form_factor": "narrow", "label": "場所を選ぶ" },
+    { "src": "shots/4.jpg", "sizes": "360x640", "type": "image/jpeg", "form_factor": "narrow", "label": "おやすみタイマー" }
   ]
 }

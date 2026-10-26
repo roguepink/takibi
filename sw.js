@@ -8,8 +8,8 @@
      覚えていなければ、まるごと1回だけ取ってきて覚え、そこから切りだす(同じ動画を2回ダウンロードしない)。
    - 古い動画・音(MEDIA_V や 音の v が上がる前のもの)は、開くたびに js/app.js が消す。
    FILES を変えたときは VERSION を1つ上げる。 */
-const VERSION = 'takibi-v2';
-const FILES = ['./', 'index.html', 'css/app.css', 'js/app.js', 'js/fire.js', 'js/sound.js', 'js/music.js', 'js/scenes.js',
+const VERSION = 'takibi-v3';
+const FILES = ['./', 'index.html', 'install.js', 'shots/1.jpg', 'shots/2.jpg', 'shots/3.jpg', 'shots/4.jpg', 'css/app.css', 'js/app.js', 'js/fire.js', 'js/sound.js', 'js/music.js', 'js/scenes.js',
   'sound/sounds.json', 'music/tracks.json',
   'manifest.webmanifest', 'icons/icon-192.png', 'icons/icon-512.png', 'icons/maskable-512.png', 'icons/apple-touch-icon.png'];
 const KEEP = 'takibi-keep';   // 動画・絵・音・曲・フォント(VERSION を上げても消さない。古いものは app.js が消す)

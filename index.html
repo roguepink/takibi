@@ -113,6 +113,20 @@
   </nav>
 </div>
 
+<script>
+  // はじめの画面(Google Play 風: インストール / このまま見る)。install.js が出す。
+  // shield: はじめの画面にふれても うしろの灯りは反応しない(「このまま見る」を押したときだけ、そのタップで灯る)
+  window.INSTALL_GATE = {
+    id: 'takibi', name: 'ひとくべ', icon: 'icons/icon-192.png', color: '#c0561f', shield: true,
+    tagline: '焚き火を、ただ眺める',
+    badges: ['無料', '広告なし', '登録なし'],
+    shots: ['shots/1.jpg', 'shots/2.jpg', 'shots/3.jpg', 'shots/4.jpg'],
+    desc: '夜、焚き火をただ眺めるためのアプリです。短い映像をそのつどランダムにつなぐので、同じ燃え方がくり返しにくく、ずっと見ていられます。音は本物の焚き火の録音です。',
+    points: ['天の川の山と、月の砂浜。2つの焚き火', '焚き火の音と、森や波の音を、別々の大きさで', 'おやすみタイマーで、火が熾火(おきび)になって 静かに消える'],
+    playLabel: '▶ このまま見る', laterLabel: 'あとで(このまま見る)'
+  };
+</script>
+<script src="install.js"></script>
 <script type="module" src="js/app.js"></script>
 </body>
 </html>
